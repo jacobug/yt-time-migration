@@ -1,0 +1,12 @@
+{
+    "name": "kk/yt-time",
+    "autoload": {
+        "psr-4": {
+            "Kk\\YtTime\\": "src/"
+        }
+    },
+    "require": {
+        "lijinma/commander": "^0.0.4",
+        "guzzlehttp/guzzle": "^7.7"
+    }
+}

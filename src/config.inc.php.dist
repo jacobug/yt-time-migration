@@ -1,0 +1,7 @@
+<?php
+
+const API_KEY = '';
+const ME_ID = '';
+const YT_HOST = 'https://example-youtrack.com';
+
+error_reporting(E_ALL ^ E_DEPRECATED);

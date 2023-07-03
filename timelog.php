@@ -14,8 +14,8 @@ $cmd = new Commander();
 $cmd
     ->version('0.1')
     ->option('-m, --me', 'Who am I')
-    ->option('-t, --top', 'Top issues')
-    ->option('-p, --prev', 'Previous month')
+    ->option('-t, --top [login]', 'Issues logged by certain user')
+    ->option('-p, --prev', 'Last month modifier')
     ->parse($argv);
 
 if (isset($cmd->me)) {

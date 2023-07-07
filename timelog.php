@@ -7,6 +7,7 @@ use GuzzleHttp\Exception\ClientException;
 require __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/src/config.inc.php';
 
+echo PHP_EOL;
 echo 'Youtrack Keep Time Logs Well v0.1' . PHP_EOL;
 
 $cmd = new Commander();
@@ -16,6 +17,7 @@ $cmd
     ->option('-m, --me', 'Who am I')
     ->option('-t, --top [login]', 'Issues logged by certain user')
     ->option('-p, --prev', 'Last month modifier')
+    ->option('-d, --dry', 'Just show all issues')
     ->parse($argv);
 
 if (isset($cmd->me)) {
@@ -23,11 +25,13 @@ if (isset($cmd->me)) {
     $client = new \GuzzleHttp\Client();
     $response = $client->request('GET', 'https://issue.int.clickmeeting.com/api/users/me?fields=name,id', ['headers' => ['Authorization' => 'Bearer ' . API_KEY]]);
 
-    echo Color::YELLOW . $response->getStatusCode() . Color::WHITE . PHP_EOL; // 200
+    //echo Color::YELLOW . $response->getStatusCode() . Color::WHITE . PHP_EOL; // 200
     
     $content = json_decode($response->getBody());
 
-    echo Color::GREEN . $content->name . Color::WHITE . PHP_EOL;
+    echo PHP_EOL;
+    echo sprintf('Logged as: %s', Color::GREEN . $content->name . Color::WHITE) . PHP_EOL;
+    echo sprintf('Your ID is: %s', Color::GREEN . $content->id . Color::WHITE) . PHP_EOL;
 
 }
 
@@ -44,9 +48,16 @@ if (isset($cmd->top)) {
     $endDate = $logMonth->format('Y-m-t');
 
     try {
-        $response = $client->request('GET',
-            YT_HOST . '/api/workItems?fields=issue(id,idReadable,summary),created,duration(presentation,minutes),author(name),creator(name),date,id,type&author='. $cmd->top .'&startDate='. $startDate . '&endDate=' . $endDate,
-            ['headers' => ['Authorization' => 'Bearer ' . API_KEY]]);
+        $response = $client->request(
+            'GET',
+            YT_HOST . sprintf(
+                '/api/workItems?fields=issue(id,idReadable,summary),created,duration(presentation,minutes),author(name),creator(name),date,id,type&author=%s&startDate=%s&endDate=%s', 
+                $cmd->top,
+                $startDate, 
+                $endDate
+            ),
+            ['headers' => ['Authorization' => 'Bearer ' . API_KEY]]
+        );
     } catch (ClientException $e) {
         $response = $e->getResponse();
         $responseBody = $response->getBody()->getContents();
@@ -71,7 +82,12 @@ if (isset($cmd->top)) {
         echo Color::BLUE . $workItem->duration->presentation . Color::WHITE . PHP_EOL;
         echo Color::WHITE . $workItem->issue->summary . Color::WHITE . PHP_EOL;
 
-        $line = readline("move to yours? [" . Color::YELLOW . 'n' . Color::WHITE . "] ");
+        if (isset($cmd->dry)) {
+            $line = null;
+        } else {
+            $line = readline("move to yours? [" . Color::YELLOW . 'n' . Color::WHITE . "] ");
+        }
+
         if ($line === 'y'){
             $params = [
                 'usesMarkdown' => true,
@@ -86,7 +102,11 @@ if (isset($cmd->top)) {
             ];
 
             try {
-                $response = $client->request('POST', YT_HOST . '/api/issues/'. $workItem->issue->id .'/timeTracking/workItems?fields=author(id,name),creator(id,name),date,duration(id,minutes,presentation),id,name,text,type(id,name)', ['headers' => ['Authorization' => 'Bearer ' . API_KEY], 'json' => $params]);
+                $response = $client->request(
+                    'POST', 
+                    YT_HOST . '/api/issues/'. $workItem->issue->id .'/timeTracking/workItems?fields=author(id,name),creator(id,name),date,duration(id,minutes,presentation),id,name,text,type(id,name)',
+                    ['headers' => ['Authorization' => 'Bearer ' . API_KEY], 'json' => $params]
+                    );
             } catch (ClientException $e) {
                 $response = $e->getResponse();
                 $responseBody = $response->getBody()->getContents();
@@ -98,7 +118,8 @@ if (isset($cmd->top)) {
 
         $smt = $logDate->format('d-m-Y');
     }
-
+    
+    echo PHP_EOL;
     echo Color::GREEN . '   ____                     .___         __        ___.     
   / ___\  ____    ____    __| _/        |__|  ____ \_ |__   
  / /_/  >/  _ \  /  _ \  / __ |         |  | /  _ \ | __ \  
@@ -107,3 +128,5 @@ if (isset($cmd->top)) {
                              \/     \______|            \/  ' . Color::WHITE . PHP_EOL;
     
 }
+
+echo PHP_EOL;

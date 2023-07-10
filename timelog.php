@@ -80,12 +80,12 @@ if (isset($cmd->top)) {
         
         echo Color::GREEN . $workItem->issue->idReadable . Color::WHITE . ' - ';
         echo Color::BLUE . $workItem->duration->presentation . Color::WHITE . PHP_EOL;
-        echo Color::WHITE . $workItem->issue->summary . Color::WHITE . PHP_EOL;
+        echo Color::LIGHT_GRAY . $workItem->issue->summary . Color::WHITE . PHP_EOL . PHP_EOL;
 
         if (isset($cmd->dry)) {
             $line = null;
         } else {
-            $line = readline("move to yours? [" . Color::YELLOW . 'n' . Color::WHITE . "] ");
+            $line = readline("copy to yours? [" . Color::YELLOW . 'n' . Color::WHITE . "] ");
         }
 
         if ($line === 'y'){

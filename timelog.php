@@ -18,34 +18,54 @@ $cmd
     ->option('-t, --top [login]', 'Issues logged by certain user')
     ->option('-p, --prev', 'Last month modifier')
     ->option('-d, --dry', 'Just show all issues')
+    ->option('-x, --holidays', 'Enter day offs')
     ->parse($argv);
 
 if (isset($cmd->me)) {
 
     $client = new \GuzzleHttp\Client();
     $response = $client->request('GET', 'https://issue.int.clickmeeting.com/api/users/me?fields=name,id', ['headers' => ['Authorization' => 'Bearer ' . API_KEY]]);
-
-    //echo Color::YELLOW . $response->getStatusCode() . Color::WHITE . PHP_EOL; // 200
     
     $content = json_decode($response->getBody());
 
     echo PHP_EOL;
     echo sprintf('Logged as: %s', Color::GREEN . $content->name . Color::WHITE) . PHP_EOL;
     echo sprintf('Your ID is: %s', Color::GREEN . $content->id . Color::WHITE) . PHP_EOL;
-
 }
 
 if (isset($cmd->top)) {
     $client = new \GuzzleHttp\Client();
 
     $logMonth = new \DateTime();
-
+    
     if (isset($cmd->prev)) {
         $logMonth->modify('-1 month');
     }
 
     $startDate = $logMonth->format('Y-m-01');
     $endDate = $logMonth->format('Y-m-t');
+
+    $holidaysResponse = $client->request('GET', sprintf('https://openholidaysapi.org/PublicHolidays?countryIsoCode=PL&languageIsoCode=PL&validFrom=%s&validTo=%s', $startDate, $endDate));
+    $holidays = json_decode($holidaysResponse->getBody()->getContents());
+    if (empty($holidays)) {
+        echo 'No holidays this month' . PHP_EOL;
+    }
+
+    $dayoffs = [];
+    if (isset($cmd->holidays)) {
+        $line = 1;
+        while (!empty($line)) {
+            $line = readline(Color::LIGHT_GRAY . "want to add day off? enter day of the month when you were absent: ");
+            if (!empty($line)) {
+                $dayoffs[] = $logMonth->format(sprintf('Y-m-%s', (strlen($line) === 1) ? '0' . $line : $line));
+            }
+        }
+    }
+
+    $holidaysKV = [];
+    foreach ($holidays as $holiday) {
+        $holidaysKV[$holiday->startDate] = $holiday->name[0]->text;
+    }
 
     try {
         $response = $client->request(
@@ -64,8 +84,6 @@ if (isset($cmd->top)) {
         echo Color::RED . json_decode($responseBody)->error . Color::WHITE . PHP_EOL;
         return;
     }
-
-    echo Color::YELLOW . $response->getStatusCode() . Color::WHITE . PHP_EOL; // 200
     
     $workItems = json_decode($response->getBody());
 
@@ -76,7 +94,10 @@ if (isset($cmd->top)) {
         $logDate = new \DateTime(substr("@$workItem->date", 0, -3));
         if ($smt !== $logDate->format('d-m-Y')) {
             echo PHP_EOL . Color::WHITE . '---' . Color::WHITE . PHP_EOL;
-            echo Color::WHITE .  $logDate->format('d-m-Y') . Color::WHITE . PHP_EOL;
+            echo Color::WHITE .  $logDate->format('d-m-Y') . Color::WHITE;
+            echo in_array($logDate->format('Y-m-d'), array_keys($holidaysKV)) ? ' ' . Color::BG_RED . $holidaysKV[$logDate->format('Y-m-d')] . Color::BG_BLACK : '';
+            echo !empty(array_keys($dayoffs, $logDate->format('Y-m-d'))) ? ' ' . Color::BG_YELLOW . 'Day off' . Color::BG_BLACK : '';
+            echo PHP_EOL;
             echo Color::WHITE . '---' . Color::WHITE . PHP_EOL;
         }
         
@@ -115,7 +136,6 @@ if (isset($cmd->top)) {
                 echo Color::RED . json_decode($responseBody)->error . Color::WHITE . PHP_EOL;
                 return;
             }
-            echo Color::YELLOW . $response->getStatusCode() . Color::WHITE . PHP_EOL; // 200
         }
 
         $smt = $logDate->format('d-m-Y');

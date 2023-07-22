@@ -69,6 +69,8 @@ if (isset($cmd->top)) {
     
     $workItems = json_decode($response->getBody());
 
+    usort($workItems, fn($a, $b) => strcmp($a->date, $b->date));
+
     $smt = '';
     foreach($workItems as $workItem) {
         $logDate = new \DateTime(substr("@$workItem->date", 0, -3));
